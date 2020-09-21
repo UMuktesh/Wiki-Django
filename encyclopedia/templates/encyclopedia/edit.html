@@ -1,0 +1,29 @@
+{% extends "encyclopedia/layout.html" %}
+
+{% load crispy_forms_tags %}
+
+{% block title %}
+    Edit {{ title }}
+{% endblock %}
+
+{% block body %}
+    <form action="{% url 'edit' title %}" method="post">
+    {% csrf_token %}
+    <div id="div_id_content" class="form-group">
+        <label for="id_content" class="requiredField">
+        Content<span class="asteriskField">*</span>
+        </label>
+        <div class="">
+        <textarea
+            name="content"
+            cols="40"
+            rows="10"
+            class="textarea form-control"
+            required
+            id="id_content"
+        >{{ value }}</textarea>
+        </div>
+    </div>
+    <input type="submit" class="btn btn-dark" value="Save" />
+    </form>
+{% endblock %}
