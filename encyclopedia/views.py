@@ -1,16 +1,62 @@
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.http import HttpResponseRedirect
-from django import forms
+from .forms import UserForm, markdown
+from .models import log, creation
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+import datetime
 import re
 from . import util
 import markdown2
 import random
-import re
 
-class markdown(forms.Form):
-    title = forms.CharField(label="Title", max_length=30)
-    content = forms.CharField(widget=forms.Textarea, label="Content")
+def register(request):
+    if request.method == "GET":
+        return render(request, "encyclopedia/register.html", {
+            "form": UserForm()
+        })
+    else:
+        form = UserForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            username = form.cleaned_data.get('username')
+            login(request, user)
+            messages.success(request, f"You are now registered and logged in as {username}")
+            return redirect('/')
+        messages.error(request, "Invalid credentials.")
+        return
+
+def login_view(request):
+    if request.method == "GET":
+        if request.user.is_authenticated:
+            return redirect(reverse("index"))
+        return render(request, "encyclopedia/login.html", {
+            "form": AuthenticationForm()
+        })
+    else:
+        form = AuthenticationForm(request=request, data=request.POST)
+        if form.is_valid():
+            username = form.cleaned_data.get('username')
+            password = form.cleaned_data.get('password')
+            user = authenticate(username=username, password=password)
+            if user is not None:
+                login(request, user)
+                messages.success(request, f"You are now logged in as {username}")
+                next_url = request.POST['next']
+                if not next_url:
+                    next_url = '/'
+                return redirect(next_url)
+        messages.error(request, "Invalid username or password.")
+        return
+
+@login_required
+def logout_view(request):
+    logout(request)
+    messages.success(request, f"You are now logged out")
+    return redirect("/login")
 
 def index(request):
     return render(request, "encyclopedia/index.html", {
@@ -18,6 +64,16 @@ def index(request):
         "heading": "All Pages"
     })
 
+@login_required
+def user(request):
+    return render(request, "encyclopedia/user.html", {
+        "user": request.user.username,
+        "first": request.user.first_name,
+        "last": request.user.last_name,
+        "email": request.user.email,
+        "contribc": creation.objects.filter(username=request.user.username),
+        "contribe": log.objects.filter(username=request.user.username)
+    })
 
 def wiki(request, title):
     c = util.get_entry(title)
@@ -34,9 +90,16 @@ The requested page is not found
             return HttpResponseRedirect(reverse('wiki', args=[t])) 
     return render(request, "encyclopedia/wiki.html", {
         "title": title,
-        "markdown": markdown2.markdown(c)
+        "markdown": markdown2.markdown(c),
+        "created": creation.objects.get(wikiname=title)
     })
 
+def logger(request, title):
+    logs = log.objects.filter(wikiname=title).all()
+    return render(request, "encyclopedia/log.html", {
+        "title": title,
+        "logs": logs.reverse()
+    })
 
 def search(request):
     if request.method == "POST":
@@ -59,6 +122,7 @@ def rand(request):
     entry = random.choice(util.list_entries())
     return HttpResponseRedirect(reverse('wiki', args=[entry]))
 
+@login_required
 def create(request):
     if request.method == "GET":
         return render(request, "encyclopedia/create.html", {
@@ -85,8 +149,13 @@ A page with the title already exists.
             content = content.splitlines()
             content = "\n".join(content)
             util.save_entry(title, content)
+            create = creation(wikiname=title, username=request.user.username, creation=datetime.datetime.now())
+            create.save()
+            insertLog = log(username=request.user.username, wikiname=title, time=datetime.datetime.now())
+            insertLog.save()
         return HttpResponseRedirect(reverse('wiki', args=[title]))
 
+@login_required
 def edit(request, title):
     if request.method == "GET":
         content = util.get_entry(title)
@@ -119,4 +188,6 @@ The requested page is not found
         content = content.splitlines()
         content = "\n".join(content)
         util.save_entry(title, content)
+        insertLog = log(username=request.user.username, wikiname=title, time=datetime.datetime.now())
+        insertLog.save()
         return HttpResponseRedirect(reverse('wiki', args=[title]))

@@ -1,0 +1,31 @@
+{% extends 'encyclopedia/layout.html' %}
+
+
+{% block title %}
+    Register
+{% endblock title %}
+
+{% load crispy_forms_tags %}
+
+{% block body %}
+
+    {% if messages %}
+        <ul>
+            {% for message in messages %}
+                <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <div class="container">
+        <h1>Register</h1><br />
+        <form method="POST" action="{% url 'register' %}">
+        {% csrf_token %}
+        {{ form|crispy }}
+            <input class="btn btn-primary" type="submit" value="Register">
+        </form>
+        Already have an account? <a href="{% url 'login' %}"><strong>Login here</strong></a>!
+    </div>
+{% endblock body %}
+    
+    

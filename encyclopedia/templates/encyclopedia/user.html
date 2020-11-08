@@ -1,0 +1,30 @@
+{% extends 'encyclopedia/layout.html' %}
+
+
+{% block title %}
+    {{ user }}
+{% endblock title %}
+    
+{% block body %}
+    <h1>{{ first }} {{ last }}</h1>
+    <h2>Email: {{ email }}</h2>
+    <br />
+    <h3>Wikis Created</h3>
+    <ul>
+        {% for contrib in contribc %}
+            <li><a href="{% url 'wiki' contrib.wikiname %}">{{ contrib.wikiname }}</a> at {{ contrib.creation }}</li>
+        {% empty %}
+            <li>No wikis created</li>
+        {% endfor %}
+    </ul>
+
+    <h3>Wikis Edited</h3>
+    <ul>
+        {% for contrib in contribe %}
+            <li><a href="{% url 'wiki' contrib.wikiname %}">{{ contrib.wikiname }}</a> at {{ contrib.time }}</li>
+        {% empty %}
+            <li>No wikis edited</li>
+        {% endfor %}
+    </ul>
+{% endblock body %}
+    
